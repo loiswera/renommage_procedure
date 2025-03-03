@@ -3,11 +3,29 @@ from pathlib import Path
 import re
 from pptx import Presentation
 
-dossier = Path("/Users/loiswera/Downloads/renommage_procédure")
+# Demander à l'utilisateur de saisir un lien SharePoint ou OneDrive
+sharepoint_link = input("Veuillez entrer le lien SharePoint ou OneDrive: ")
+
+# Convertir le lien en un chemin local (vous devrez peut-être adapter cette partie en fonction de votre environnement)
+# Assurez-vous que le lien est correctement converti en chemin local
+dossier = Path(sharepoint_link.replace("https://emineoeducation.sharepoint.com/teams/", "/Users/loiswera/SharePoint/"))
+print(f"Chemin du dossier: {dossier}")
+
+# Vérifiez si le dossier existe
+if not dossier.exists():
+    print(f"Le dossier n'existe pas: {dossier}")
+else:
+    missing_references_log = dossier / "missing_references.txt"
+
+    # Trouver tous les fichiers PPTX dans le dossier et ses sous-dossiers
+    pptx_files = list(dossier.rglob("*.pptx"))
+    print(f"Fichiers PPTX trouvés: {pptx_files}")
+
 missing_references_log = dossier / "missing_references.txt"
 
 # Trouver tous les fichiers PPTX dans le dossier et ses sous-dossiers
 pptx_files = list(dossier.rglob("*.pptx"))
+print(f"Fichiers PPTX trouvés: {pptx_files}")
 
 # Dictionnaire pour stocker la correspondance {DSOP_nom: titre}
 file_titles = {}
@@ -23,7 +41,6 @@ def normalize_string(s):
     """ Normalize a string to NFC form """
     return unicodedata.normalize('NFC', s)
 
-
 def get_first_slide_title(pptx_path):
     """ Récupère le titre de la première diapositive d'un fichier PowerPoint """
     try:
@@ -38,15 +55,15 @@ def get_first_slide_title(pptx_path):
 
         return "Titre inconnu"
     except Exception as e:
+        print(f"Erreur lors de la récupération du titre de la première diapositive de {pptx_path}: {e}")
         return f"Erreur : {e}"
-
 
 # Étape 1 : Collecter tous les titres des fichiers
 for pptx_file in pptx_files:
     title = get_first_slide_title(pptx_file)
     dsop_name = normalize_string(pptx_file.stem)
     file_titles[dsop_name] = title
-
+    print(f"Fichier: {pptx_file}, Titre: {title}")
 
 def replace_dsop_references_in_last_slide(pptx_path):
     """ Remplace les références DSOP_ par leur titre dans la dernière diapositive et enregistre le fichier """
@@ -93,7 +110,7 @@ def replace_dsop_references_in_last_slide(pptx_path):
                                 print(f"      ❌ {dsop} not found in file_titles")
                                 print(f"      Available keys: {list(file_titles.keys())}")
                                 with open(missing_references_log, "a") as log_file:
-                                    log_file.write(f"{dsop}\n")
+                                    log_file.write(f"{pptx_path} => {dsop}\n")
 
                         # Appliquer la modification au run
                         run.text = text
@@ -108,7 +125,6 @@ def replace_dsop_references_in_last_slide(pptx_path):
     except Exception as e:
         print(f"❌ Erreur sur {pptx_path.name} : {e}")
 
-
 def rename_pptx_files():
     """ Renomme les fichiers PPTX en fonction de leur titre """
     new_pptx_files = []
@@ -122,7 +138,6 @@ def rename_pptx_files():
                 new_pptx_files.append(new_path)
                 print(f"🔄 Renommé: {pptx_file.name} → {new_name}")
     return new_pptx_files
-
 
 # Étape 2 : Modifier uniquement la dernière diapositive des fichiers
 for pptx_file in pptx_files:
