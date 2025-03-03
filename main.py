@@ -1,0 +1,134 @@
+import unicodedata
+from pathlib import Path
+import re
+from pptx import Presentation
+
+dossier = Path("/Users/loiswera/Downloads/renommage_procédure")
+missing_references_log = dossier / "missing_references.txt"
+
+# Trouver tous les fichiers PPTX dans le dossier et ses sous-dossiers
+pptx_files = list(dossier.rglob("*.pptx"))
+
+# Dictionnaire pour stocker la correspondance {DSOP_nom: titre}
+file_titles = {}
+
+def get_document_path(dsop_reference):
+    """ Retourne le chemin du document associé à une référence DSOP """
+    normalized_dsop = normalize_string(dsop_reference)
+    if normalized_dsop in file_titles:
+        return dossier / f"{file_titles[normalized_dsop]}.pptx"
+    return None
+
+def normalize_string(s):
+    """ Normalize a string to NFC form """
+    return unicodedata.normalize('NFC', s)
+
+
+def get_first_slide_title(pptx_path):
+    """ Récupère le titre de la première diapositive d'un fichier PowerPoint """
+    try:
+        prs = Presentation(pptx_path)
+        first_slide = prs.slides[0]
+
+        for shape in first_slide.shapes:
+            if hasattr(shape, "text") and shape.text.strip():
+                return shape.text.strip()
+            elif hasattr(shape, "text_frame") and shape.text_frame is not None:
+                return shape.text_frame.text.strip()
+
+        return "Titre inconnu"
+    except Exception as e:
+        return f"Erreur : {e}"
+
+
+# Étape 1 : Collecter tous les titres des fichiers
+for pptx_file in pptx_files:
+    title = get_first_slide_title(pptx_file)
+    dsop_name = normalize_string(pptx_file.stem)
+    file_titles[dsop_name] = title
+
+
+def replace_dsop_references_in_last_slide(pptx_path):
+    """ Remplace les références DSOP_ par leur titre dans la dernière diapositive et enregistre le fichier """
+    try:
+        if not pptx_path.exists():
+            print(f"❌ Fichier non trouvé : {pptx_path}")
+            return
+
+        prs = Presentation(pptx_path)
+
+        if len(prs.slides) == 0:
+            print(f"⚠ {pptx_path.name} : Aucune diapositive trouvée.")
+            return
+
+        last_slide = prs.slides[-1]  # Sélectionner la dernière diapositive
+        modified = False
+
+        print(f"🔍 Analyse de la dernière diapositive de {pptx_path.name}...")
+
+        # Parcourir toutes les formes
+        for shape in last_slide.shapes:
+            if not hasattr(shape, "text_frame") or shape.text_frame is None:
+                continue  # Ignorer si ce n'est pas une zone de texte
+
+            # Vérifier chaque paragraphe
+            for paragraph in shape.text_frame.paragraphs:
+                for run in paragraph.runs:
+                    text = run.text
+                    matches = re.findall(r"DSOP_[\w\d]+", text)
+
+                    if matches:
+                        print(f"   ➡ Références trouvées dans un run : {matches}")
+
+                        for dsop in matches:
+                            normalized_dsop = normalize_string(dsop)
+                            if normalized_dsop in file_titles:
+                                print(f"      ✅ Remplacement: {dsop} → {file_titles[normalized_dsop]}")
+                                text = text.replace(dsop, file_titles[normalized_dsop])
+                                modified = True
+                                link_address = get_document_path(dsop)
+                                if link_address:
+                                    run.hyperlink.address = str(link_address)
+                            else:
+                                print(f"      ❌ {dsop} not found in file_titles")
+                                print(f"      Available keys: {list(file_titles.keys())}")
+                                with open(missing_references_log, "a") as log_file:
+                                    log_file.write(f"{dsop}\n")
+
+                        # Appliquer la modification au run
+                        run.text = text
+
+        # Sauvegarde du fichier seulement s'il a été modifié
+        if modified:
+            prs.save(pptx_path)
+            print(f"💾 Modifié et enregistré : {pptx_path.name}")
+        else:
+            print(f"✅ Aucun changement nécessaire pour {pptx_path.name}")
+
+    except Exception as e:
+        print(f"❌ Erreur sur {pptx_path.name} : {e}")
+
+
+def rename_pptx_files():
+    """ Renomme les fichiers PPTX en fonction de leur titre """
+    new_pptx_files = []
+    for pptx_file in pptx_files:
+        dsop_name = normalize_string(pptx_file.stem)
+        if dsop_name in file_titles:
+            new_name = f"{file_titles[dsop_name]}.pptx"
+            new_path = pptx_file.with_name(new_name)
+            if not new_path.exists():
+                pptx_file.rename(new_path)
+                new_pptx_files.append(new_path)
+                print(f"🔄 Renommé: {pptx_file.name} → {new_name}")
+    return new_pptx_files
+
+
+# Étape 2 : Modifier uniquement la dernière diapositive des fichiers
+for pptx_file in pptx_files:
+    replace_dsop_references_in_last_slide(pptx_file)
+
+# Étape 3 : Renommer les fichiers
+pptx_files = rename_pptx_files()
+
+print("✔ Modification, renommage et ajout des hyperliens terminés !")
