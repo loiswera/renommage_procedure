@@ -4,12 +4,7 @@ import re
 from pptx import Presentation
 
 # Demander à l'utilisateur de saisir un lien SharePoint ou OneDrive
-sharepoint_link = input("Veuillez entrer le lien SharePoint ou OneDrive: ")
-
-# Convertir le lien en un chemin local (vous devrez peut-être adapter cette partie en fonction de votre environnement)
-# Assurez-vous que le lien est correctement converti en chemin local
-dossier = Path(sharepoint_link.replace("https://emineoeducation.sharepoint.com/teams/", "/Users/loiswera/SharePoint/"))
-print(f"Chemin du dossier: {dossier}")
+sharepoint_link = input("Veuillez entrer le chemin du dossier: ")
 
 # Vérifiez si le dossier existe
 if not dossier.exists():
