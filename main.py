@@ -4,7 +4,12 @@ import re
 from pptx import Presentation
 
 # Demander à l'utilisateur de saisir un lien SharePoint ou OneDrive
-sharepoint_link = input("Veuillez entrer le chemin du dossier: ")
+sharepoint_link = input("Veuillez entrer le lien SharePoint ou OneDrive: ")
+
+# Convertir le lien en un chemin local (vous devrez peut-être adapter cette partie en fonction de votre environnement)
+# Assurez-vous que le lien est correctement converti en chemin local
+dossier = Path(sharepoint_link.replace("https://emineoeducation.sharepoint.com/teams/", "/Users/loiswera/SharePoint/"))
+print(f"Chemin du dossier: {dossier}")
 
 # Vérifiez si le dossier existe
 if not dossier.exists():
@@ -24,13 +29,6 @@ print(f"Fichiers PPTX trouvés: {pptx_files}")
 
 # Dictionnaire pour stocker la correspondance {DSOP_nom: titre}
 file_titles = {}
-
-def get_document_path(dsop_reference):
-    """ Retourne le chemin du document associé à une référence DSOP """
-    normalized_dsop = normalize_string(dsop_reference)
-    if normalized_dsop in file_titles:
-        return dossier / f"{file_titles[normalized_dsop]}.pptx"
-    return None
 
 def normalize_string(s):
     """ Normalize a string to NFC form """
@@ -98,9 +96,6 @@ def replace_dsop_references_in_last_slide(pptx_path):
                                 print(f"      ✅ Remplacement: {dsop} → {file_titles[normalized_dsop]}")
                                 text = text.replace(dsop, file_titles[normalized_dsop])
                                 modified = True
-                                link_address = get_document_path(dsop)
-                                if link_address:
-                                    run.hyperlink.address = str(link_address)
                             else:
                                 print(f"      ❌ {dsop} not found in file_titles")
                                 print(f"      Available keys: {list(file_titles.keys())}")
