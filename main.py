@@ -2,6 +2,7 @@ import unicodedata
 from pathlib import Path
 import re
 from pptx import Presentation
+from unidecode import unidecode
 
 # Demander à l'utilisateur de saisir un lien SharePoint ou OneDrive
 sharepoint_link = input("Veuillez entrer le lien SharePoint ou OneDrive: ")
@@ -85,16 +86,17 @@ def replace_dsop_references_in_last_slide(pptx_path):
             for paragraph in shape.text_frame.paragraphs:
                 for run in paragraph.runs:
                     text = run.text
-                    matches = re.findall(r"DSOP_[\w\d]+", text)
+                    matches = re.findall(r"DSOP_[\w\d\u00C0-\u017F\u0180-\u024F\u1E00-\u1EFF\W]+", text)
 
                     if matches:
                         print(f"   ➡ Références trouvées dans un run : {matches}")
 
                         for dsop in matches:
                             normalized_dsop = normalize_string(dsop)
+                            print(f"      🔍 Normalized DSOP: {normalized_dsop}")
                             if normalized_dsop in file_titles:
                                 print(f"      ✅ Remplacement: {dsop} → {file_titles[normalized_dsop]}")
-                                text = text.replace(dsop, file_titles[normalized_dsop])
+                                text = text.replace(dsop, f" => {file_titles[normalized_dsop]}")
                                 modified = True
                             else:
                                 print(f"      ❌ {dsop} not found in file_titles")
@@ -121,7 +123,9 @@ def rename_pptx_files():
     for pptx_file in pptx_files:
         dsop_name = normalize_string(pptx_file.stem)
         if dsop_name in file_titles:
-            new_name = f"{file_titles[dsop_name]}.pptx"
+            new_name = unidecode(file_titles[dsop_name])
+            new_name = re.sub(r'\W+', '_', new_name)
+            new_name = new_name.strip('_') + ".pptx"
             new_path = pptx_file.with_name(new_name)
             if not new_path.exists():
                 pptx_file.rename(new_path)
