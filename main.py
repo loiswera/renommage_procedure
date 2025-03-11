@@ -5,11 +5,11 @@ from pptx import Presentation
 from unidecode import unidecode
 
 # Demander à l'utilisateur de saisir un lien SharePoint ou OneDrive
-sharepoint_link = input("Veuillez entrer le lien SharePoint ou OneDrive: ")
+sharepoint_link = input("Veuillez entrer le lien SharePoint ou OneDrive: ").replace("\\", "/")
 
 # Convertir le lien en un chemin local (vous devrez peut-être adapter cette partie en fonction de votre environnement)
 # Assurez-vous que le lien est correctement converti en chemin local
-dossier = Path(sharepoint_link.replace("https://imagroupe.sharepoint.com/sites/DSOP_INTRANET_METHODES/Documents%20partages/DOCUMENTATION/5%2E%20Documents%20finalisés%20modifiables", "C:\Users\cmaury\Inter Mutuelles Assistance\DSOP_INTRANET_METHODES - 5. Documents finalisés modifiables"))
+dossier = Path(sharepoint_link.replace("https://imagroupe.sharepoint.com/sites/DSOP_INTRANET_METHODES/Documents%20partages/DOCUMENTATION/5%2E%20Documents%20finalisés%20modifiables", "C:/Users/cmaury/Inter Mutuelles Assistance/DSOP_INTRANET_METHODES - 5. Documents finalisés modifiables"))
 print(f"Chemin du dossier: {dossier}")
 
 # Vérifiez si le dossier existe
